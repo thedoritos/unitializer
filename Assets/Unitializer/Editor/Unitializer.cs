@@ -62,6 +62,8 @@ public class Unitializer
         var initScene = scenes [0];
         var editingScene = EditorSceneManager.GetActiveScene();
 
+        EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo();
+
         EditorPrefs.SetString(InitScenePath, initScene.path);
         EditorPrefs.SetString(EditingSceneName, editingScene.name);
         EditorPrefs.SetString(EditingScenePath, editingScene.path);
