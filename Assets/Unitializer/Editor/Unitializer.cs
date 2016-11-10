@@ -6,56 +6,103 @@ using UnityEditor.SceneManagement;
 [InitializeOnLoad]
 public class Unitializer
 {
-    private static Scene current;
+    private static readonly string HasInitScene = "unitializer_has_first_scene";
+    private static readonly string InitScenePath = "unitializer_first_scene_path";
+    private static readonly string EditingSceneName = "unitializer_editing_scene_name";
+    private static readonly string EditingScenePath = "unitializer_editing_scene_path";
 
     private static bool wasPlaying = false;
 
     static Unitializer()
     {
-        EditorApplication.playmodeStateChanged += () =>
-        {
-            var isPlaying = EditorApplication.isPlaying;
+        EditorApplication.playmodeStateChanged -= Unitializer.OnPlaymodeStateChanged;
+        EditorApplication.playmodeStateChanged += Unitializer.OnPlaymodeStateChanged;
+    }
 
-            if (wasPlaying == false)
+    private static void OnPlaymodeStateChanged()
+    {
+        var isPlaying = EditorApplication.isPlaying;
+
+        if (wasPlaying == false)
+        {
+            if (isPlaying == false)
             {
-                if (isPlaying == false)
-                    OnBeforeLaunch();
-                else
-                    OnAfterLaunch();
+                OnBeforeLaunch();
             } else
             {
-                if (isPlaying)
-                    OnBeforeQuit();
-                else
-                    OnAfterQuit();
+                OnAfterLaunch();
             }
+        } else
+        {
+            if (isPlaying)
+            {
+                OnBeforeQuit();
+            } else
+            {
+                OnAfterQuit();
+            }
+        }
 
-            wasPlaying = isPlaying;
-        };
-//        EditorSceneManager.LoadScene(0);
-//        EditorSceneManager.OpenScene("Assets/Scenes/AScene.unity");
-//        EditorSceneManager.UnloadScene(1);
-//        EditorSceneManager.UnloadScene("BScene.unity");
-//        EditorSceneManager.CloseScene(current, true);
+        wasPlaying = isPlaying;
     }
 
     private static void OnBeforeLaunch()
     {
-        current = EditorSceneManager.GetActiveScene();
-        EditorSceneManager.OpenScene("Assets/Scenes/AScene.unity");
+        var scenes = EditorBuildSettings.scenes;
+        var hasInitScene = scenes.Length > 0;
+
+        EditorPrefs.SetBool(HasInitScene, hasInitScene);
+
+        if (hasInitScene == false)
+        {
+            Debug.Log("[Unitializer] Can't find scenes in Build Settings.");
+            return;
+        }
+
+        var initScene = scenes [0];
+        var editingScene = EditorSceneManager.GetActiveScene();
+
+        EditorPrefs.SetString(InitScenePath, initScene.path);
+        EditorPrefs.SetString(EditingSceneName, editingScene.name);
+        EditorPrefs.SetString(EditingScenePath, editingScene.path);
+
+        EditorSceneManager.OpenScene(initScene.path);
     }
 
     private static void OnAfterLaunch()
     {
-        EditorSceneManager.UnloadScene(current.name);
+        var hasInitScene = EditorPrefs.GetBool(HasInitScene);
+        if (hasInitScene == false)
+        {
+            return;
+        }
+
+        var editingSceneName = EditorPrefs.GetString(EditingSceneName);
+
+        EditorSceneManager.UnloadScene(editingSceneName);
     }
 
     private static void OnBeforeQuit()
     {
+        
     }
 
     private static void OnAfterQuit()
     {
-        EditorSceneManager.OpenScene("Assets/Scenes/BScene.unity");
+        var hasInitScene = EditorPrefs.GetBool(HasInitScene);
+        if (hasInitScene == false)
+        {
+            Debug.Log("[Unitializer] Could not find scenes in Build Settings.");
+            return;
+        }
+
+        var editingScenePath = EditorPrefs.GetString(EditingScenePath);
+
+        EditorSceneManager.OpenScene(editingScenePath);
+
+        EditorPrefs.DeleteKey(HasInitScene);
+        EditorPrefs.DeleteKey(InitScenePath);
+        EditorPrefs.DeleteKey(EditingSceneName);
+        EditorPrefs.DeleteKey(EditingScenePath);
     }
 }
